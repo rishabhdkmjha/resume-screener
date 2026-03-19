@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Resume Screener</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff; --bg2: #f7f7f5; --bg3: #f0efea;
+    --txt: #1a1a18; --txt2: #6b6b67; --txt3: #999992;
+    --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.22);
+    --radius: 8px; --radius-lg: 12px;
+    --green: #1D9E75; --green-bg: #EAF3DE; --green-txt: #27500A;
+    --amber: #BA7517; --amber-bg: #FAEEDA; --amber-txt: #633806;
+    --red: #E24B4A; --red-bg: #FCEBEB; --red-txt: #791F1F;
+    --blue-bg: #E6F1FB; --blue-txt: #0C447C;
+    --teal-bg: #E1F5EE; --teal-txt: #085041;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a; --bg2: #252523; --bg3: #2e2e2b;
+      --txt: #f0efe8; --txt2: #a0a09a; --txt3: #666660;
+      --border: rgba(255,255,255,0.12); --border2: rgba(255,255,255,0.22);
+      --green-bg: #173404; --green-txt: #C0DD97;
+      --amber-bg: #412402; --amber-txt: #FAC775;
+      --red-bg: #501313; --red-txt: #F7C1C1;
+      --blue-bg: #042C53; --blue-txt: #B5D4F4;
+      --teal-bg: #04342C; --teal-txt: #9FE1CB;
+    }
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg3); color: var(--txt); min-height: 100vh; }
+  .topbar { background: var(--bg); border-bottom: 1px solid var(--border); padding: 0 2rem; display: flex; align-items: center; gap: 12px; height: 56px; position: sticky; top: 0; z-index: 10; }
+  .logo { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; }
+  .logo span { color: var(--green); }
+  .topbar-sub { font-size: 13px; color: var(--txt2); }
+  .container { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; }
+  .tabs { display: flex; gap: 2px; background: var(--bg2); border-radius: var(--radius); padding: 3px; margin-bottom: 1.5rem; width: fit-content; }
+  .tab { padding: 7px 20px; font-size: 14px; border-radius: 6px; cursor: pointer; border: none; background: none; color: var(--txt2); font-family: inherit; transition: all .15s; }
+  .tab.active { background: var(--bg); color: var(--txt); font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  .panel { display: none; } .panel.active { display: block; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  @media(max-width:640px){ .grid2{grid-template-columns:1fr} }
+  .card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; }
+  .lbl { font-size: 11px; font-weight: 600; color: var(--txt2); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  textarea, input[type=text] { width: 100%; border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; font-size: 13px; font-family: inherit; color: var(--txt); background: var(--bg); line-height: 1.6; transition: border .15s; }
+  textarea { resize: vertical; }
+  textarea:focus, input:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px rgba(29,158,117,0.12); }
+  .r-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; min-height: 32px; }
+  .r-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--bg2); border-radius: var(--radius); border: 1px solid var(--border); }
+  .av { width: 28px; height: 28px; border-radius: 50%; background: var(--blue-bg); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: var(--blue-txt); flex-shrink: 0; }
+  .r-name { font-size: 13px; font-weight: 500; flex: 1; }
+  .r-len { font-size: 11px; color: var(--txt3); }
+  .r-rm { background: none; border: none; cursor: pointer; color: var(--txt3); font-size: 16px; line-height: 1; padding: 0 4px; transition: color .15s; }
+  .r-rm:hover { color: var(--red); }
+  .add-row { display: flex; gap: 8px; align-items: flex-start; }
+  .add-row input { width: 130px; flex-shrink: 0; }
+  .add-row textarea { flex: 1; resize: none; }
+  .btn { padding: 9px 18px; border-radius: var(--radius); font-size: 14px; cursor: pointer; border: 1px solid var(--border2); background: var(--bg); color: var(--txt); font-family: inherit; font-weight: 500; transition: all .15s; }
+  .btn:hover { background: var(--bg2); }
+  .btn-primary { background: var(--txt); color: var(--bg); border-color: var(--txt); }
+  .btn-primary:hover { opacity: .85; }
+  .btn-primary:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-ghost { border-color: var(--border); color: var(--txt2); font-size: 13px; padding: 7px 14px; }
+  .btn-ghost:hover { color: var(--txt); background: var(--bg2); }
+  .run-row { display: flex; align-items: center; gap: 12px; margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid var(--border); }
+  .status-txt { font-size: 13px; color: var(--txt2); }
+  .prog-wrap { margin-top: 10px; height: 3px; background: var(--bg3); border-radius: 99px; overflow: hidden; }
+  .prog-bar { height: 100%; background: var(--green); border-radius: 99px; animation: prg 1.6s ease-in-out infinite; }
+  @keyframes prg { 0%{width:0%;margin-left:0} 50%{width:55%;margin-left:22%} 100%{width:0%;margin-left:100%} }
+  .metrics { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 1.5rem; }
+  @media(max-width:500px){ .metrics{grid-template-columns:repeat(2,1fr)} }
+  .met { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+  .met-v { font-size: 26px; font-weight: 600; color: var(--txt); line-height: 1; }
+  .met-l { font-size: 12px; color: var(--txt2); margin-top: 4px; }
+  .bars-section { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1.25rem; }
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+  .bar-row:last-child { margin-bottom: 0; }
+  .bar-nm { font-size: 13px; width: 120px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--txt2); }
+  .bar-tr { flex: 1; height: 8px; background: var(--bg3); border-radius: 99px; overflow: hidden; }
+  .bar-fl { height: 100%; border-radius: 99px; transition: width .5s ease; }
+  .bar-sc { font-size: 12px; color: var(--txt2); width: 28px; text-align: right; font-weight: 500; }
+  .controls { display: flex; align-items: center; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; }
+  .view-toggle { display: flex; gap: 2px; background: var(--bg2); border-radius: var(--radius); padding: 2px; }
+  .vt { padding: 5px 12px; font-size: 12px; border-radius: 6px; cursor: pointer; border: none; background: none; color: var(--txt2); font-family: inherit; }
+  .vt.active { background: var(--bg); color: var(--txt); font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+  select { padding: 6px 10px; border-radius: var(--radius); font-size: 13px; border: 1px solid var(--border); background: var(--bg); color: var(--txt); font-family: inherit; cursor: pointer; margin-left: auto; }
+  .tbl-wrap { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; overflow-x: auto; margin-bottom: 1rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 600px; }
+  th { text-align: left; font-size: 11px; font-weight: 600; color: var(--txt2); text-transform: uppercase; letter-spacing: .05em; padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--bg2); white-space: nowrap; }
+  td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg2); }
+  .rank { width: 24px; height: 24px; border-radius: 50%; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+  .rank-1 { background: #FAEEDA; color: #633806; }
+  .rank-2 { background: #D3D1C7; color: #2C2C2A; }
+  .rank-3 { background: #FAECE7; color: #4A1B0C; }
+  .rank-n { background: var(--bg2); color: var(--txt2); }
+  .score-wrap { display: flex; align-items: center; gap: 8px; }
+  .sbar { width: 56px; height: 6px; background: var(--bg3); border-radius: 99px; overflow: hidden; flex-shrink: 0; }
+  .sbar-f { height: 100%; border-radius: 99px; }
+  .sc-num { font-size: 13px; font-weight: 600; }
+  .fit-pill { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .fit-s { background: var(--green-bg); color: var(--green-txt); }
+  .fit-m { background: var(--amber-bg); color: var(--amber-txt); }
+  .fit-n { background: var(--red-bg); color: var(--red-txt); }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 5px; font-size: 11px; margin: 2px 2px 2px 0; font-weight: 500; }
+  .tag-s { background: var(--teal-bg); color: var(--teal-txt); }
+  .tag-g { background: var(--red-bg); color: var(--red-txt); }
+  .card-list { display: flex; flex-direction: column; gap: 10px; }
+  .ccard { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.1rem 1.25rem; transition: box-shadow .15s; }
+  .ccard:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .ccard.top { border-left: 3px solid var(--green); }
+  .cc-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .cc-name { font-size: 15px; font-weight: 600; flex: 1; }
+  .cc-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+  .cc-verdict { font-size: 13px; color: var(--txt2); line-height: 1.65; padding-top: 10px; border-top: 1px solid var(--border); }
+  .empty { text-align: center; padding: 4rem 1rem; color: var(--txt2); font-size: 15px; background: var(--bg); border-radius: var(--radius-lg); border: 1px solid var(--border); }
+  .empty-icon { font-size: 32px; margin-bottom: 10px; }
+  .api-section { margin-bottom: 1.25rem; }
+  .api-row { display: flex; gap: 8px; align-items: center; }
+  .api-row input { flex: 1; font-family: var(--font-mono, monospace); font-size: 12px; letter-spacing: 0.03em; }
+  .api-note { font-size: 12px; color: var(--txt3); margin-top: 6px; }
+  .api-note a { color: var(--green); text-decoration: none; }
+  .api-note a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">Resume<span>AI</span></div>
+  <div class="topbar-sub">AI-powered candidate screening</div>
+</div>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab active" data-tab="setup" onclick="switchTab(this,'setup')">Setup</button>
+    <button class="tab" data-tab="results" onclick="switchTab(this,'results')">Results</button>
+  </div>
+
+  <!-- SETUP PANEL -->
+  <div class="panel active" id="panel-setup">
+
+    <div class="card api-section">
+      <div class="lbl">Anthropic API Key</div>
+      <div class="api-row">
+        <input type="text" id="api-key" placeholder="sk-ant-api03-..." autocomplete="off" />
+        <button class="btn btn-ghost" onclick="toggleKey()">Show</button>
+      </div>
+      <p class="api-note">Your key is only used in your browser and never stored. Get one at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a></p>
+    </div>
+
+    <div class="grid2" style="margin-bottom:1.25rem">
+      <div class="card">
+        <div class="lbl">Job description</div>
+        <textarea id="jd" rows="14" placeholder="Paste the full job description here…&#10;&#10;Include:&#10;- Role title&#10;- Required skills&#10;- Years of experience&#10;- Nice-to-haves"></textarea>
+      </div>
+      <div class="card">
+        <div class="lbl">Candidates <span id="r-count" style="font-weight:400;text-transform:none;letter-spacing:0;font-size:12px;color:var(--txt3)"></span></div>
+        <div class="r-list" id="r-list">
+          <div style="font-size:13px;color:var(--txt3)">No candidates added yet.</div>
+        </div>
+        <div class="lbl" style="margin-top:12px">Add candidate</div>
+        <div class="add-row" style="margin-bottom:8px">
+          <input type="text" id="new-name" placeholder="Full name" />
+          <textarea id="new-text" rows="2" placeholder="Paste resume / LinkedIn bio / profile text…"></textarea>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost" onclick="addResume()" style="flex:1">+ Add candidate</button>
+          <button class="btn btn-ghost" onclick="loadSamples()" style="flex:1">Load sample data</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="run-row">
+      <button class="btn btn-primary" id="run-btn" onclick="runScreening()">▶ Screen candidates</button>
+      <span class="status-txt" id="status"></span>
+    </div>
+    <div id="prog" style="display:none"><div class="prog-wrap"><div class="prog-bar"></div></div></div>
+  </div>
+
+  <!-- RESULTS PANEL -->
+  <div class="panel" id="panel-results">
+    <div id="results-inner">
+      <div class="empty"><div class="empty-icon">📋</div>Run a screening on the Setup tab to see results here.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+let resumes = [], results = [], viewMode = 'table';
+
+const $ = id => document.getElementById(id);
+
+function switchTab(el, tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  $('panel-' + tab).classList.add('active');
+}
+
+function goToResults() {
+  const btn = document.querySelector('[data-tab="results"]');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  $('panel-results').classList.add('active');
+}
+
+function toggleKey() {
+  const inp = $('api-key');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function initials(n) { return n.split(' ').map(w => w[0] || '').join('').slice(0, 2).toUpperCase(); }
+
+function renderList() {
+  const el = $('r-list');
+  $('r-count').textContent = resumes.length ? '(' + resumes.length + ' added)' : '';
+  if (!resumes.length) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--txt3)">No candidates added yet.</div>';
+    return;
+  }
+  el.innerHTML = resumes.map((r, i) => `
+    <div class="r-item">
+      <div class="av">${initials(r.name)}</div>
+      <span class="r-name">${r.name}</span>
+      <span class="r-len">${r.text.length} chars</span>
+      <button class="r-rm" onclick="removeResume(${i})">×</button>
+    </div>`).join('');
+}
+
+function addResume() {
+  const nm = $('new-name').value.trim();
+  const tx = $('new-text').value.trim();
+  if (!nm || !tx) { alert('Enter both a candidate name and their resume text.'); return; }
+  resumes.push({ name: nm, text: tx });
+  $('new-name').value = '';
+  $('new-text').value = '';
+  renderList();
+}
+
+function removeResume(i) { resumes.splice(i, 1); renderList(); }
+
+function loadSamples() {
+  $('jd').value = `Senior Frontend Developer — Full-time
+
+We are looking for a Senior Frontend Developer to join our growing product team.
+
+Requirements:
+- 4+ years of hands-on React.js experience
+- Strong TypeScript skills
+- Experience with REST APIs and GraphQL
+- Familiarity with CI/CD pipelines (GitHub Actions, Jenkins, etc.)
+- Experience mentoring junior engineers
+- Strong communication and collaboration skills
+
+Nice to have:
+- Next.js or SSR experience
+- Prior work in SaaS or fintech
+- Open source contributions`;
+
+  resumes = [
+    { name: "Priya Sharma",  text: "5 years frontend. Expert React, TypeScript, GraphQL. Led team of 4 engineers at fintech startup. Set up CI/CD with GitHub Actions. Mentored 2 junior devs. BSc CS, IIT Delhi." },
+    { name: "Rahul Verma",   text: "3 years. React and JS developer. Some TypeScript exposure. Built REST APIs. No team lead experience. Currently learning Next.js." },
+    { name: "Aisha Khan",    text: "6 years full-stack. React, TypeScript, Next.js. Open source contributor (2k GitHub stars). Prior SaaS. Mentored interns. GraphQL and REST. Gave 3 conference talks. Strong communicator." },
+    { name: "Vikram Nair",   text: "4 years React. JavaScript proficient, some TypeScript. REST API work. No CI/CD or mentoring. Good team player." },
+    { name: "Sneha Patil",   text: "2 years. Junior React developer. Basic TypeScript. Limited API work. No leadership. Recent bootcamp grad with strong portfolio projects." },
+    { name: "Arjun Mehta",   text: "7 years. React, Angular, Vue. TypeScript expert. CI/CD (Jenkins + GitHub Actions). Mentored 5 junior devs. SaaS background. Strong REST, no GraphQL. BE + MBA." }
+  ];
+  renderList();
+}
+
+function scoreColor(s) {
+  if (s >= 70) return 'var(--green)';
+  if (s >= 50) return 'var(--amber)';
+  return 'var(--red)';
+}
+
+function fitInfo(s) {
+  if (s >= 70) return { cls: 'fit-s', txt: 'Strong Fit' };
+  if (s >= 50) return { cls: 'fit-m', txt: 'Moderate Fit' };
+  return { cls: 'fit-n', txt: 'Not Fit' };
+}
+
+function rankClass(i) {
+  return ['rank-1','rank-2','rank-3'][i] || 'rank-n';
+}
+
+function setView(mode) {
+  viewMode = mode;
+  document.querySelectorAll('.vt').forEach(b => b.classList.remove('active'));
+  document.querySelector('[data-view="' + mode + '"]').classList.add('active');
+  renderResultsInner(results);
+}
+
+function sortResults(by) {
+  if (by === 'score') results.sort((a, b) => b.score - a.score);
+  else if (by === 'name') results.sort((a, b) => a.name.localeCompare(b.name));
+  else if (by === 'fit') {
+    const o = { 'Strong Fit': 0, 'Moderate Fit': 1, 'Not Fit': 2 };
+    results.sort((a, b) => o[fitInfo(a.score).txt] - o[fitInfo(b.score).txt]);
+  }
+  renderResultsInner(results);
+}
+
+function renderResultsInner(res) {
+  const strong   = res.filter(r => r.score >= 70).length;
+  const moderate = res.filter(r => r.score >= 50 && r.score < 70).length;
+  const notfit   = res.filter(r => r.score < 50).length;
+  const avg      = Math.round(res.reduce((s, r) => s + r.score, 0) / res.length);
+
+  let html = `<div class="metrics">
+    <div class="met"><div class="met-v">${res.length}</div><div class="met-l">Screened</div></div>
+    <div class="met"><div class="met-v" style="color:var(--green)">${strong}</div><div class="met-l">Strong fit</div></div>
+    <div class="met"><div class="met-v" style="color:var(--amber)">${moderate}</div><div class="met-l">Moderate fit</div></div>
+    <div class="met"><div class="met-v" style="color:var(--red)">${notfit}</div><div class="met-l">Not fit</div></div>
+  </div>`;
+
+  html += `<div class="bars-section"><div class="lbl" style="margin-bottom:12px">Score overview</div>`;
+  res.forEach(r => {
+    html += `<div class="bar-row">
+      <span class="bar-nm" title="${r.name}">${r.name}</span>
+      <div class="bar-tr"><div class="bar-fl" style="width:${r.score}%;background:${scoreColor(r.score)}"></div></div>
+      <span class="bar-sc">${r.score}</span>
+    </div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="controls">
+    <div class="view-toggle">
+      <button class="vt${viewMode==='table'?' active':''}" data-view="table" onclick="setView('table')">Table</button>
+      <button class="vt${viewMode==='cards'?' active':''}" data-view="cards" onclick="setView('cards')">Cards</button>
+    </div>
+    <select onchange="sortResults(this.value)">
+      <option value="score">Sort by score</option>
+      <option value="fit">Sort by fit</option>
+      <option value="name">Sort by name</option>
+    </select>
+  </div>`;
+
+  if (viewMode === 'table') {
+    html += `<div class="tbl-wrap"><table>
+      <thead><tr>
+        <th style="width:32px">#</th>
+        <th>Candidate</th>
+        <th>Score</th>
+        <th>Key strengths</th>
+        <th>Key gaps</th>
+        <th>Recommendation</th>
+      </tr></thead><tbody>`;
+    res.forEach((r, i) => {
+      const fit = fitInfo(r.score);
+      html += `<tr>
+        <td><div class="rank ${rankClass(i)}">${i+1}</div></td>
+        <td style="font-weight:600">${r.name}</td>
+        <td><div class="score-wrap">
+          <div class="sbar"><div class="sbar-f" style="width:${r.score}%;background:${scoreColor(r.score)}"></div></div>
+          <span class="sc-num" style="color:${scoreColor(r.score)}">${r.score}</span>
+        </div></td>
+        <td>${(r.strengths||[]).map(s=>`<span class="tag tag-s">${s}</span>`).join('')}</td>
+        <td>${(r.gaps||[]).map(g=>`<span class="tag tag-g">${g}</span>`).join('')}</td>
+        <td><span class="fit-pill ${fit.cls}">${fit.txt}</span></td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+  } else {
+    html += `<div class="card-list">`;
+    res.forEach((r, i) => {
+      const fit = fitInfo(r.score);
+      html += `<div class="ccard${i===0?' top':''}">
+        <div class="cc-head">
+          <div class="rank ${rankClass(i)}">${i+1}</div>
+          <span class="cc-name">${r.name}</span>
+          <div class="score-wrap">
+            <div class="sbar"><div class="sbar-f" style="width:${r.score}%;background:${scoreColor(r.score)}"></div></div>
+            <span class="sc-num" style="color:${scoreColor(r.score)}">${r.score}/100</span>
+          </div>
+          <span class="fit-pill ${fit.cls}">${fit.txt}</span>
+        </div>
+        <div class="cc-tags">
+          ${(r.strengths||[]).map(s=>`<span class="tag tag-s">✓ ${s}</span>`).join('')}
+          ${(r.gaps||[]).map(g=>`<span class="tag tag-g">✗ ${g}</span>`).join('')}
+        </div>
+        <div class="cc-verdict">${r.verdict}</div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  $('results-inner').innerHTML = html;
+}
+
+async function runScreening() {
+  const apiKey = $('api-key').value.trim();
+  const jd     = $('jd').value.trim();
+  if (!apiKey) { alert('Please enter your Anthropic API key.'); return; }
+  if (!jd)     { alert('Please enter a job description.'); return; }
+  if (!resumes.length) { alert('Please add at least one candidate.'); return; }
+
+  const btn = $('run-btn');
+  btn.disabled = true;
+  $('status').textContent = `Screening ${resumes.length} candidate${resumes.length > 1 ? 's' : ''}…`;
+  $('prog').style.display = 'block';
+
+  const prompt = `You are an expert technical recruiter. Evaluate each candidate against the job description below. Return ONLY a valid JSON array — no markdown, no explanation, no preamble.
+
+JOB DESCRIPTION:
+${jd}
+
+CANDIDATES:
+${resumes.map((r, i) => `[${i}] ${r.name}:\n${r.text}`).join('\n\n')}
+
+Return a JSON array sorted by score descending. Each element must have exactly:
+{
+  "name": "exact candidate name as given",
+  "score": <integer 0-100>,
+  "strengths": ["strength 1", "strength 2", "strength 3"],
+  "gaps": ["gap 1", "gap 2"],
+  "verdict": "2-3 sentence hiring recommendation"
+}
+
+Scoring guide:
+70-100 = Strong Fit (meets most/all key requirements)
+50-69  = Moderate Fit (meets some requirements, has potential)
+0-49   = Not Fit (significant gaps for this role)
+
+Be specific, evidence-based, and fair.`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error.message);
+    const raw   = data.content.map(c => c.text || '').join('');
+    const clean = raw.replace(/```json|```/g, '').trim();
+    results = JSON.parse(clean);
+    renderResultsInner(results);
+    goToResults();
+  } catch(e) {
+    $('status').textContent = 'Error: ' + e.message;
+  } finally {
+    btn.disabled = false;
+    $('prog').style.display = 'none';
+    if ($('status').textContent.startsWith('Screening')) $('status').textContent = '';
+  }
+}
+
+renderList();
+</script>
+</body>
+</html>
